@@ -8,6 +8,19 @@
 #include <LiquidCrystal_I2C.h>
 Adafruit_SGP30 sgp; // Create an SGP30 instance
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD I2C address and dimensions
+
+// eCO2 thresholds in ppm
+const int eCO2_low = 400;
+const int eCO2_normal = 1000;
+const int eCO2_moderate = 2000;
+// Above eCO2_moderate is considered high
+
+// TVOC thresholds in ppb
+const int TVOC_low = 0;
+const int TVOC_normal = 50;
+const int TVOC_moderate = 200;
+// Above TVOC_moderate is considered high
+
 void setup() {
     Serial.begin(9600);
     lcd.init(); // Initialize the LCD
@@ -20,21 +33,57 @@ void setup() {
     Serial.println("SGP30 Found!");
     lcd.print("SGP30 Ready");
 }
+unsigned long lastSwitchTime = 0; // Last time the display switched between values and descriptions
+bool showDescription = false; // Start by showing the values
+
 void loop() {
     if (!sgp.IAQmeasure()) {
         Serial.println("Measurement failed");
         return;
     }
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("eCO2: ");
-    lcd.print(sgp.eCO2);
-    lcd.print(" ppm");
+    unsigned long currentTime = millis();
 
-    lcd.setCursor(0, 1);
-    lcd.print("TVOC: ");
-    lcd.print(sgp.TVOC);
-    lcd.print(" ppb");
+    // Switch display mode every 3 seconds
+    if (currentTime - lastSwitchTime >= 3000) {
+        showDescription = !showDescription;
+        lastSwitchTime = currentTime;
+        lcd.clear();
+    }
 
-    delay(1000); // Wait for 1 second before the next reading
+    if (showDescription) {
+        // Display air quality descriptions
+        lcd.setCursor(0, 0);
+        lcd.print("eCO2: ");
+        lcd.print(getCO2Description(sgp.eCO2));
+
+        lcd.setCursor(0, 1);
+        lcd.print("TVOC: ");
+        lcd.print(getTVOCDescription(sgp.TVOC));
+    }
+    else {
+        // Display numeric values
+        lcd.setCursor(0, 0);
+        lcd.print("eCO2: ");
+        lcd.print(sgp.eCO2);
+        lcd.print(" ppm");
+
+        lcd.setCursor(0, 1);
+        lcd.print("TVOC: ");
+        lcd.print(sgp.TVOC);
+        lcd.print(" ppb");
+    }
+    delay(1000);
 }
+
+String getCO2Description(int eCO2) {
+    if (eCO2 <= eCO2_normal) return "Normal";
+    else if (eCO2 <= eCO2_moderate) return "Moderate";
+    else return "High";
+}
+
+String getTVOCDescription(int TVOC) {
+    if (TVOC <= TVOC_normal) return "Normal";
+    else if (TVOC <= TVOC_moderate) return "Moderate";
+    else return "High";
+}
+
