@@ -6,8 +6,13 @@
 #include <Wire.h>
 #include <Adafruit_SGP30.h>
 #include <LiquidCrystal_I2C.h>
+#include <DHT.h>
 Adafruit_SGP30 sgp; // Create an SGP30 instance
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD I2C address and dimensions
+#define DHTPIN 2     // What digital pin the DHT22 is connected to
+#define DHTTYPE DHT11   // DHT 22 (AM2302)
+
+DHT dht(DHTPIN, DHTTYPE);
 
 // eCO2 thresholds in ppm
 const int eCO2_low = 400;
@@ -30,6 +35,8 @@ void setup() {
         Serial.println("Sensor not found :(");
         while (1);
     }
+    dht.begin();
+
     Serial.println("SGP30 Found!");
     lcd.print("SGP30 Ready");
 }
@@ -72,7 +79,22 @@ void loop() {
         lcd.print(sgp.TVOC);
         lcd.print(" ppb");
     }
-    delay(1000);
+    delay(4000);
+    // Reading temperature and humidity
+    float humidity = dht.readHumidity();
+    float temperature = dht.readTemperature(); // By default, the temperature is in Celsius
+    // Display air quality descriptions
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: ");
+    lcd.print(temperature);
+    lcd.print(" C");
+
+    lcd.setCursor(0, 1);
+    lcd.print("Hum: ");
+    lcd.print(humidity);
+    lcd.print(" %");
+    delay(4000);
 }
 
 String getCO2Description(int eCO2) {
